@@ -22,9 +22,9 @@ public class Main
             final int hei = 50;
 
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            Rectangle fullBounds = ge.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
-            int x = fullBounds.x + (fullBounds.width - wid) / 2;
-            int y = fullBounds.y + fullBounds.height - hei - 15;
+            Rectangle bounds = ge.getMaximumWindowBounds();
+            int x = (bounds.width - wid) / 2;
+            int y = bounds.y + bounds.height - hei;
 
             window.setSize(wid, hei);
             window.setLocation(x, y);
