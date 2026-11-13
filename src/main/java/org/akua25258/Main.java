@@ -22,10 +22,9 @@ public class Main
             final int hei = 50;
 
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            Rectangle bounds = ge.getMaximumWindowBounds();
-            int x = (bounds.width - wid) / 2;
-            // int x = bounds.x;
-            int y = bounds.y + bounds.height - hei;
+            Rectangle fullBounds = ge.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+            int x = fullBounds.x + (fullBounds.width - wid) / 2;
+            int y = fullBounds.y + fullBounds.height - hei - 15;
 
             window.setSize(wid, hei);
             window.setLocation(x, y);
@@ -89,12 +88,10 @@ public class Main
 
     public static String getText() { return " " + getBattery() + "%"; }
 
-    private static void openWebpage() {
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI("https://github.com/akua25258/WinlessUI"));
-            }
-        } catch (Exception e) { e.printStackTrace(); }
+    private static void openWebpage()
+    {
+        try { if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) Desktop.getDesktop().browse(new URI("https://github.com/akua25258/WinlessUI")); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     private static void setupSystemTray(JWindow window)
@@ -130,8 +127,7 @@ public class Main
         TrayIcon trayIcon = new TrayIcon(image, "WinlessUI", popup);
         trayIcon.setImageAutoSize(true);
 
-        try {
-            tray.add(trayIcon);
-        } catch (AWTException e) { e.printStackTrace(); }
+        try { tray.add(trayIcon); }
+        catch (AWTException e) { e.printStackTrace(); }
     }
 }
