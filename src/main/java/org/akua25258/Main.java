@@ -14,7 +14,14 @@ import java.awt.image.BufferedImage;
 
 public class Main
 {
+    private static final Config Config = new Config();
+    private static final Gui Gui = new Gui();
+
+    private static final JWindow window = new JWindow();
     private static final SystemInfo systemInfo = new SystemInfo();
+
+    private static final int wid = 300;
+    private static final int hei = 50;
 
     private static boolean isTimerRunning = false;
     private static int time = 0;
@@ -25,23 +32,16 @@ public class Main
         short GetAsyncKeyState(int vKey);
     }
 
+    public static Config getConfig() { return Config; }
+
     public static void main(String[] args)
     {
         SwingUtilities.invokeLater(() -> {
-            JWindow window = new JWindow();
-            final int wid = 300;
-            final int hei = 50;
-
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            Rectangle bounds = ge.getMaximumWindowBounds();
-            int x = (bounds.width - wid) / 2;
-            int y = bounds.y + bounds.height - hei;
-
             window.setSize(wid, hei);
-            window.setLocation(x, y);
+            setTextPosition();
+            window.setBackground(new Color(0, 0, 0, 0));
 
             JPanel panel = new JPanel(new BorderLayout());
-            window.setBackground(new Color(0, 0, 0, 0));
             panel.setOpaque(false);
 
             JLabel label = new JLabel("Loading...");
@@ -55,21 +55,38 @@ public class Main
             window.setVisible(true);
             window.setAlwaysOnTop(true);
 
-            setupSystemTray(window, label);
+            setupSystemTray(label);
 
             Timer timer = new Timer(1000, e -> {
                 if (isTimerRunning) time++;
+                if (!window.isVisible()) return;
                 label.setText(getText());
 
-                refresh(window, label);
+                refresh(label);
             });
             timer.setInitialDelay(0);
             timer.start();
-            startKeyMonitor(window, label, timer);
+            startKeyMonitor(label, timer);
         });
+        Gui.open();
     }
 
-    public static void refresh(JWindow window, JLabel label)
+    public static void setTextPosition()
+    {
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        Rectangle bounds = ge.getMaximumWindowBounds();
+        final int pos = Config.getTextPosition();
+        int x = 0;
+        int y = 0;
+        if (pos == 1 || pos == 4) x = wid;
+        else if (pos == 2 || pos == 5) x = (bounds.width - wid) / 2;
+        else if (pos == 3 || pos == 6) x = bounds.width - wid;
+        if (pos >= 1 && pos <= 3) y = bounds.y - bounds.height - hei;
+        else if (pos >= 4 && pos <= 6) y = bounds.y + bounds.height - hei;
+        window.setLocation(x, y);
+    }
+
+    public static void refresh(JLabel label)
     {
         if (isCharging()) {
             if (getBattery() >= 70) label.setForeground(Color.YELLOW);
@@ -119,7 +136,7 @@ public class Main
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    private static void setupSystemTray(JWindow window, JLabel label)
+    private static void setupSystemTray(JLabel label)
     {
         if (!SystemTray.isSupported()) return;
         SystemTray tray = SystemTray.getSystemTray();
@@ -137,11 +154,15 @@ public class Main
         toggleItem.addActionListener(e -> window.setVisible(!window.isVisible()));
         popup.add(toggleItem);
 
+        MenuItem timerItem = new MenuItem("タイマーの切り替え");
+        timerItem.addActionListener(e -> { isTimerRunning = !isTimerRunning; time = 0; refresh(label); });
+        popup.add(timerItem);
+
         popup.addSeparator();
 
-        MenuItem timerItem = new MenuItem("タイマーの切り替え");
-        timerItem.addActionListener(e -> { isTimerRunning = !isTimerRunning; time = 0; refresh(window, label); });
-        popup.add(timerItem);
+        MenuItem guiItem = new MenuItem("設定画面を開く");
+        guiItem.addActionListener(e -> Gui.open() );
+        popup.add(guiItem);
 
         popup.addSeparator();
 
@@ -162,7 +183,7 @@ public class Main
         catch (AWTException e) { e.printStackTrace(); }
     }
 
-    private static void startKeyMonitor(JWindow window, JLabel label, Timer timer) {
+    private static void startKeyMonitor(JLabel label, Timer timer) {
         Thread monitorThread = new Thread(() -> {
             final int SHIFT_KEY = 0xA1;
             boolean wasPressed = false;
@@ -176,7 +197,7 @@ public class Main
                         SwingUtilities.invokeLater(() -> time = 0);
                         timer.setInitialDelay(1000);
                         timer.restart();
-                        refresh(window, label);
+                        refresh(label);
                     }
                     wasPressed = isPressed;
 
