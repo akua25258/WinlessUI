@@ -1,11 +1,11 @@
 package org.akua25258;
 
-import java.util.Properties;
-
 public class Config
 {
-    private final Properties properties = new Properties();
+    // private final Properties properties = new Properties();
 
+    private boolean isTimerRunning = false;
+    private boolean isOnFps = false;
     private int textPosition = 5;
 
 //    public Config()
@@ -24,7 +24,11 @@ public class Config
 //        return (value != null) ? Integer.parseInt(value) : -1;
 //    }
 
+    public boolean isTimerRunning() { return this.isTimerRunning; }
+    public boolean isOnFps() { return this.isOnFps; }
     public int getTextPosition() { return this.textPosition; }
 
+    public void setIsTimerRunning(boolean bool) { this.isTimerRunning = bool; }
+    public void setIsOnFps(boolean bool) { this.isOnFps = bool; }
     public void setTextPosition(int i) { this.textPosition = i; }
 }

@@ -14,16 +14,18 @@ import java.awt.image.BufferedImage;
 
 public class Main
 {
+    private static final SystemInfo systemInfo = new SystemInfo();
+
     private static final Config Config = new Config();
     private static final Gui Gui = new Gui();
 
-    private static final JWindow window = new JWindow();
-    private static final SystemInfo systemInfo = new SystemInfo();
+    public static final JWindow window = new JWindow();
+    private static final JLabel label = new JLabel("Loading...");
+    public static Timer timer;
 
     private static final int wid = 300;
-    private static final int hei = 50;
+    private static final int hei = 18;
 
-    private static boolean isTimerRunning = false;
     private static int time = 0;
 
     public interface KeyMonitorUser32 extends StdCallLibrary
@@ -44,31 +46,29 @@ public class Main
             JPanel panel = new JPanel(new BorderLayout());
             panel.setOpaque(false);
 
-            JLabel label = new JLabel("Loading...");
             label.setForeground(Color.DARK_GRAY);
             label.setFont(new Font("Meiryo", Font.PLAIN, 18));
-            label.setHorizontalAlignment(SwingConstants.CENTER);
-            label.setVerticalAlignment(SwingConstants.BOTTOM);
+            label.setVerticalAlignment(SwingConstants.CENTER);
             panel.add(label, BorderLayout.CENTER);
 
             window.add(panel);
             window.setVisible(true);
             window.setAlwaysOnTop(true);
 
-            setupSystemTray(label);
+            setupSystemTray();
 
-            Timer timer = new Timer(1000, e -> {
-                if (isTimerRunning) time++;
+            timer = new Timer(1000, e -> {
+                if (getConfig().isTimerRunning()) time++;
                 if (!window.isVisible()) return;
-                label.setText(getText());
 
-                refresh(label);
+                refresh();
             });
             timer.setInitialDelay(0);
             timer.start();
-            startKeyMonitor(label, timer);
+            startKeyMonitor(timer);
         });
-        Gui.open();
+        // Gui.open();
+        // デフォルトでメニューを開くとかの設定も実装したいな
     }
 
     public static void setTextPosition()
@@ -78,15 +78,14 @@ public class Main
         final int pos = Config.getTextPosition();
         int x = 0;
         int y = 0;
-        if (pos == 1 || pos == 4) x = wid;
-        else if (pos == 2 || pos == 5) x = (bounds.width - wid) / 2;
-        else if (pos == 3 || pos == 6) x = bounds.width - wid;
-        if (pos >= 1 && pos <= 3) y = bounds.y - bounds.height - hei;
-        else if (pos >= 4 && pos <= 6) y = bounds.y + bounds.height - hei;
+        if (pos == 1 || pos == 4) label.setHorizontalAlignment(SwingConstants.LEFT);
+        else if (pos == 2 || pos == 5) { x = (bounds.width - wid) / 2; label.setHorizontalAlignment(SwingConstants.CENTER); }
+        else if (pos == 3 || pos == 6) { x = bounds.width - wid; label.setHorizontalAlignment(SwingConstants.RIGHT); }
+        if (pos >= 4 && pos <= 6) y = bounds.y + bounds.height - hei;
         window.setLocation(x, y);
     }
 
-    public static void refresh(JLabel label)
+    public static void refresh()
     {
         if (isCharging()) {
             if (getBattery() >= 70) label.setForeground(Color.YELLOW);
@@ -94,6 +93,7 @@ public class Main
         } else if (getBattery() >= 20) label.setForeground(Color.WHITE);
         else label.setForeground(Color.RED);
 
+        label.setText(getText());
         window.repaint();
     }
 
@@ -120,15 +120,23 @@ public class Main
         return false;
     }
 
+    public static void resetTIme() { time = 0; }
+
     public static String getTime()
     {
-        if (!isTimerRunning) return "";
+        if (!getConfig().isTimerRunning()) return "";
         int m = time / 60;
         int s = time % 60;
         return " | " + m + ":" + (s < 10 ? "0" + s : s);
     }
 
-    public static String getText() { return getBattery() + "%" + getTime(); }
+    public static String getFps()
+    {
+        if (!getConfig().isOnFps()) return "";
+        return " | " + Fps.getFps() + " FPS";
+    }
+
+    public static String getText() { return getBattery() + "%" + getTime() + getFps(); }
 
     private static void openWebpage()
     {
@@ -136,7 +144,7 @@ public class Main
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    private static void setupSystemTray(JLabel label)
+    private static void setupSystemTray()
     {
         if (!SystemTray.isSupported()) return;
         SystemTray tray = SystemTray.getSystemTray();
@@ -153,10 +161,6 @@ public class Main
         MenuItem toggleItem = new MenuItem("表示の切り替え");
         toggleItem.addActionListener(e -> window.setVisible(!window.isVisible()));
         popup.add(toggleItem);
-
-        MenuItem timerItem = new MenuItem("タイマーの切り替え");
-        timerItem.addActionListener(e -> { isTimerRunning = !isTimerRunning; time = 0; refresh(label); });
-        popup.add(timerItem);
 
         popup.addSeparator();
 
@@ -183,7 +187,7 @@ public class Main
         catch (AWTException e) { e.printStackTrace(); }
     }
 
-    private static void startKeyMonitor(JLabel label, Timer timer) {
+    private static void startKeyMonitor(Timer timer) {
         Thread monitorThread = new Thread(() -> {
             final int SHIFT_KEY = 0xA1;
             boolean wasPressed = false;
@@ -191,17 +195,27 @@ public class Main
             while (true)
             {
                 try {
+                    Thread.sleep(50);
+
+                    if (!Config.isTimerRunning())
+                    {
+                        wasPressed = false;
+                        continue;
+                    }
+
                     boolean isPressed = (KeyMonitorUser32.INSTANCE.GetAsyncKeyState(SHIFT_KEY) & 0x8000) != 0;
                     if (isPressed && !wasPressed)
                     {
-                        SwingUtilities.invokeLater(() -> time = 0);
-                        timer.setInitialDelay(1000);
-                        timer.restart();
-                        refresh(label);
+                        SwingUtilities.invokeLater(() -> {
+                            time = 0;
+                            refresh();
+                            timer.setInitialDelay(1000);
+                            timer.restart();
+                        });
+                        new Sound("/timer.wav");
+
                     }
                     wasPressed = isPressed;
-
-                    Thread.sleep(50);
                 } catch (InterruptedException e) { break; }
             }
         });

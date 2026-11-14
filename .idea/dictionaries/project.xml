@@ -2,6 +2,8 @@
   <dictionary name="project">
     <words>
       <w>akua</w>
+      <w>cFrame</w>
+      <w>dwmapi</w>
     </words>
   </dictionary>
 </component>
